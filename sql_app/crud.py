@@ -1,22 +1,8 @@
 from sqlalchemy.orm import Session
 from fastapi import status, HTTPException
-
 from . import models, schemas
 
-def get_post(db: Session, id: int, owner_id: int):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-    if post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-                            detail=f"post with id: {id} was not found")
-    
-    # make posts private
-    if post.owner_id != owner_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to perform requested action")
-    return post
 
-def get_posts(db: Session, owner_id: int, limit: int, skip: int, search: str):
-    # filter only returns posts created by users
-    return db.query(models.Post).filter(models.Post.owner_id == owner_id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
 
 def create_post(db: Session, post: schemas.Post, owner_id: int):
 

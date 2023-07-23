@@ -1,33 +1,51 @@
 
 from fastapi import Response, status, HTTPException, Depends, APIRouter
-from .. import schemas, crud, oauth2
+from .. import schemas, crud, oauth2, models
 from ..database import get_db
 from sqlalchemy.orm import Session
 from typing import List
+from sqlalchemy import func
+
 
 
 router = APIRouter(prefix="/posts", tags=['Posts'])
 
-@router.get("/", response_model=List[schemas.Post])
+@router.get("/", response_model=List[schemas.PostResponse])
 def get_posts(db: Session = Depends(get_db), 
               current_user: int = Depends(oauth2.get_current_user), 
               limit: int = 10, skip: int = 0, search: str | None = ""):
     # cursor.execute("""SELECT * FROM posts """)
     # posts = cursor.fetchall()
+    
+    results = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(
+        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(
+        models.Post.id).filter(models.Post.owner_id == current_user.id).filter(
+        models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    
+    post_results = []
+    for post, vote in results:
+        post_results.append(schemas.PostResponse(Post=post, votes=vote))
 
-    posts = crud.get_posts(db, current_user.id, limit, skip, search)
-    return posts
+    return post_results
 
 
-@router.get("/{id}", response_model=schemas.Post)
+@router.get("/{id}", response_model=schemas.PostResponse)
 def get_post(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s """, (str(id)))
     # post = cursor.fetchone()
-    post = crud.get_post(db, id, current_user.id)
+
+    post = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(
+        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(
+        models.Post.id).filter(models.Post.id == id).first()
     
     if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f"post with id: {id} was not found")
     
+    # make posts private
+    if post.Post.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to perform requested action")
+  
     return post
 
 
