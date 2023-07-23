@@ -9,19 +9,19 @@ from typing import List
 router = APIRouter(prefix="/posts", tags=['Posts'])
 
 @router.get("/", response_model=List[schemas.Post])
-def get_posts(db: Session = Depends(get_db)):
+def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # cursor.execute("""SELECT * FROM posts """)
     # posts = cursor.fetchall()
 
-    posts = crud.get_posts(db)
+    posts = crud.get_posts(db, current_user.id)
     return posts
 
 
 @router.get("/{id}", response_model=schemas.Post)
-def get_post(id: int, db: Session = Depends(get_db)):
+def get_post(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s """, (str(id)))
     # post = cursor.fetchone()
-    post = crud.get_post(db, id)
+    post = crud.get_post(db, id, current_user.id)
     
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
@@ -36,8 +36,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), curren
     # new_post = cursor.fetchone()
     # conn.commit()
 
-    print(current_user.email)
-    new_post = crud.create_post(db, post)
+    new_post = crud.create_post(db, post, owner_id = current_user.id)
 
     return new_post
 
@@ -47,7 +46,7 @@ def delete_post(id: int, db: Session = Depends(get_db), current_user: int = Depe
     # deleted_post = cursor.fetchone()
     # conn.commit()
 
-    crud.delete_post(db, id)
+    crud.delete_post(db, id, current_user.id)
     
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -57,5 +56,5 @@ def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends
     # updated_post = cursor.fetchone()
     # conn.commit()
 
-    updated_post = crud.update_post(db, id, updated_post)
+    updated_post = crud.update_post(db, id, updated_post, current_user.id)
     return updated_post
