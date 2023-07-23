@@ -14,9 +14,9 @@ def get_post(db: Session, id: int, owner_id: int):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to perform requested action")
     return post
 
-def get_posts(db: Session, owner_id: int):
+def get_posts(db: Session, owner_id: int, limit: int, skip: int, search: str):
     # filter only returns posts created by users
-    return db.query(models.Post).filter(models.Post.owner_id == owner_id).all()
+    return db.query(models.Post).filter(models.Post.owner_id == owner_id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
 
 def create_post(db: Session, post: schemas.Post, owner_id: int):
 

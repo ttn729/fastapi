@@ -9,11 +9,13 @@ from typing import List
 router = APIRouter(prefix="/posts", tags=['Posts'])
 
 @router.get("/", response_model=List[schemas.Post])
-def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+def get_posts(db: Session = Depends(get_db), 
+              current_user: int = Depends(oauth2.get_current_user), 
+              limit: int = 10, skip: int = 0, search: str | None = ""):
     # cursor.execute("""SELECT * FROM posts """)
     # posts = cursor.fetchall()
 
-    posts = crud.get_posts(db, current_user.id)
+    posts = crud.get_posts(db, current_user.id, limit, skip, search)
     return posts
 
 
